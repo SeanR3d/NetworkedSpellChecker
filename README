@@ -1,0 +1,142 @@
+
+						*****Networked Spell Checker*****
+								November 4, 2018
+								by: Sean Reddington
+
+
+INTRODUCTION
+
+This is the third assignment of CIS3207 which is meant to expose us to the use
+of multi-threaded programming and the synchronization problems that go along with it.
+This assignment also introduced us to communicating across a network via socket descriptors.
+
+
+DESIGN
+
+This program runs a spell checking server that clients can connect to using network sockets
+to check the spelling of words. After execution and the server socket has been established,
+the main program builds a dictionary data structure to check the spelling of words with.
+A "work_queue" FIFO linked-list queue is also created to store data of connected clients waiting
+to use the spell checker.
+
+A "worker" thread is created and assigned to each client that connects to the server.
+This thread will send and receive messages to the client through the network socket. Words sent by
+the client are then cross checked for correctness using the dictionary data structure created.
+The worker thread will then send the results of the spell check back to the user, as well as
+to another "log" thread, which logs the results of all spell checks done during the server's
+execution to a "log.txt" file.
+
+Because both the server and worker threads share data of the work_queue and the log thread and
+worker threads both share data of the log_queue, synchronization is needed to protect these
+data structures from being manipulated concurrently and having their data corrupted.
+To do so, the program uses mutual exclusion and condition variables to lock each of these queues,
+allowing only one thread to modify it at a time.
+
+-----------------------------------------------------------------------------------------------------
+
+HOW TO USE
+
+After building the program in a Linux environment, running the "spellcheck" executable file will
+begin the program, running the server. The server can be executed on its own using the DEFAULT_PORT
+and DEFAULT_DICTIONARY, or with a specified port number and/or dictionary file to read from.
+To do so, execute the spellcheck file with either a port number or dictionary file as 
+command line arguments. e.g.
+
+$>spellcheck 9999 dictionary.txt
+
+Or to just use the default values:
+
+$>spellcheck
+
+Once the program has executed successfully, the server will begin to run on the current machine
+and begin to accept any connection to the spell check server.
+
+On a different instance of a Linux environment, you can connect to the server as a client.
+To connect to the server using the CIS-linux2.temple.edu server and a provided telnet client script,
+
+$>ssh cis-lclient##
+$>telnet localhost #port number#
+
+Once connected, the server will now begin to spell check any words you enter. NOTE: the server
+will only handle one word at a time.
+
+
+-----------------------------------------------------------------------------------------------------
+
+TESTING
+
+In order to test the effectiveness of my program's synchronization, I connected multiple clients
+to the server at the same time. Once each was connected, I proceeded to send input to the server
+from each client instance, constantly changing clients and adding variation to frequency of messages
+sent to the server. To verify the server processed these messages correctly, I tracked the client ID
+and thread ID to a given spell check result within the log file. After execution, I was able to check
+the log file to ensure each worker thread was only handling a single client and maintaining the same
+client. I can also check the mutual exclusion and condition variables' effectiveness to keep the
+work_queue and log_queue data's integrity intact.
+
+Test run log file:
+
+
+Thread ID: 27967
+Client ID: 1
+OK!: one
+
+Thread ID: 27925
+Client ID: 2
+OK!: two
+
+Thread ID: 27927
+Client ID: 3
+OK!: three
+
+Thread ID: 27928
+Client ID: 4
+OK!: four
+
+Thread ID: 27967
+Client ID: 1
+OK!: hello
+
+Thread ID: 27925
+Client ID: 2
+OK!: world
+
+Thread ID: 27927
+Client ID: 3
+MISSPELLED: sean
+
+Thread ID: 27928
+Client ID: 4
+OK!: this
+
+Thread ID: 27928
+Client ID: 4
+OK!: is
+
+Thread ID: 27928
+Client ID: 4
+OK!: sent
+
+Thread ID: 27928
+Client ID: 4
+OK!: from
+
+Thread ID: 27967
+Client ID: 1
+OK!: interrupting
+
+Thread ID: 27925
+Client ID: 2
+OK!: cow
+
+Thread ID: 27927
+Client ID: 3
+MISSPELLED: mooooooooooooooooo
+
+Thread ID: 27928
+Client ID: 4
+OK!: my
+
+Thread ID: 27928
+Client ID: 4
+OK!: phone
